@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original icon: a stylised pawn on a dark board-blue background. Safe zone is the centre 66dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- head -->
+    <path
+        android:fillColor="#FFE8EDF2"
+        android:pathData="M54,30m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+    <!-- collar -->
+    <path
+        android:fillColor="#FF8FB3D9"
+        android:pathData="M45,42L63,42L63,47L45,47Z" />
+    <!-- body -->
+    <path
+        android:fillColor="#FFE8EDF2"
+        android:pathData="M48,47L60,47L63,64L45,64Z" />
+    <!-- base -->
+    <path
+        android:fillColor="#FF8FB3D9"
+        android:pathData="M38,64L70,64L74,72L34,72Z" />
+    <path
+        android:fillColor="#FFE8EDF2"
+        android:pathData="M34,72L74,72L74,77L34,77Z" />
+</vector>

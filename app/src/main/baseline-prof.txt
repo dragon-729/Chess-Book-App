@@ -1,0 +1,9 @@
+# Baseline profile: tells Android to pre-compile the hot paths so the first frames are smooth.
+# Wildcards cover the chess core and the UI that runs while dragging/tapping on the board.
+HSPLcom/chessbook/app/chess/**;->**(**)**
+HSPLcom/chessbook/app/engine/**;->**(**)**
+HSPLcom/chessbook/app/ui/ChessBoardViewKt;->**(**)**
+HSPLcom/chessbook/app/ui/screens/**;->**(**)**
+Lcom/chessbook/app/chess/**;
+Lcom/chessbook/app/engine/**;
+Lcom/chessbook/app/ui/**;
