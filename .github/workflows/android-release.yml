@@ -1,0 +1,156 @@
+name: Android Release Build
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version name, e.g. 1.0.0 (ignored when the run was started by a tag)"
+        required: true
+        default: "0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # Public values only, same as the debug workflow. Without these the release app says
+      # "Payments not set up in this build".
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Work out the version
+        id: ver
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="$INPUT_VERSION"
+          fi
+          if [[ ! "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::Version '$V' is not valid. Use something like 1.0.0."
+            exit 1
+          fi
+          echo "name=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Build Stockfish (optional)
+        id: stockfish
+        continue-on-error: true
+        run: bash scripts/build-stockfish.sh
+
+      - name: Load signing key from GitHub Secrets
+        id: sign
+        env:
+          KS_B64: ${{ secrets.CHESSBOOK_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.CHESSBOOK_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.CHESSBOOK_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.CHESSBOOK_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASS" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/chessbook.jks"
+            {
+              echo "CHESSBOOK_KEYSTORE_PATH=$RUNNER_TEMP/chessbook.jks"
+              echo "CHESSBOOK_KEYSTORE_PASSWORD=$KS_PASS"
+              echo "CHESSBOOK_KEY_ALIAS=$KEY_ALIAS"
+              echo "CHESSBOOK_KEY_PASSWORD=$KEY_PASS"
+            } >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Signing secrets are not configured. No signed release will be produced. See docs/BUILD.md, section 'Release signing'."
+          fi
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Run unit tests
+        env:
+          CHESSBOOK_VERSION_NAME: ${{ steps.ver.outputs.name }}
+          CHESSBOOK_VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      # ---- No signing key: be honest, do not publish a release ----
+      - name: Build installable debug APK instead (no signing key)
+        if: steps.sign.outputs.signed != 'true'
+        env:
+          CHESSBOOK_VERSION_NAME: ${{ steps.ver.outputs.name }}
+          CHESSBOOK_VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Upload debug APK (NOT a release)
+        if: steps.sign.outputs.signed != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chess-Book-debug-apk-NOT-A-RELEASE
+          path: app/build/outputs/apk/debug/*.apk
+
+      - name: Explain what happened
+        if: steps.sign.outputs.signed != 'true'
+        run: |
+          {
+            echo "### No release was published"
+            echo "The signing secrets are missing, so only a debug APK was built (see the artifact)."
+            echo "To publish a signed APK and AAB, add the four secrets described in docs/BUILD.md and re-run."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---- Signing key present: full release ----
+      - name: Build signed release APK and AAB
+        if: steps.sign.outputs.signed == 'true'
+        env:
+          CHESSBOOK_VERSION_NAME: ${{ steps.ver.outputs.name }}
+          CHESSBOOK_VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew --no-daemon assembleRelease bundleRelease
+
+      - name: Validate APK signature
+        if: steps.sign.outputs.signed == 'true'
+        run: |
+          APKSIGNER="$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n1)"
+          "$APKSIGNER" verify --verbose app/build/outputs/apk/release/*.apk
+
+      - name: Collect files and checksums
+        if: steps.sign.outputs.signed == 'true'
+        run: |
+          V="${{ steps.ver.outputs.name }}"
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk "dist/Chess-Book-$V.apk"
+          cp app/build/outputs/bundle/release/*.aab "dist/Chess-Book-$V.aab"
+          (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Create GitHub Release
+        if: steps.sign.outputs.signed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.name }}
+          name: Chess-Book ${{ steps.ver.outputs.name }}
+          generate_release_notes: true
+          body: |
+            Chess-Book ${{ steps.ver.outputs.name }}
+
+            - `Chess-Book-${{ steps.ver.outputs.name }}.apk` installs directly on Android 8.0+.
+            - `Chess-Book-${{ steps.ver.outputs.name }}.aab` is for Google Play.
+            - Verify downloads with `SHA256SUMS.txt`.
+            - Engine in this build: ${{ steps.stockfish.outcome == 'success' && 'official Stockfish' || 'built-in fallback engine (Stockfish build failed)' }}.
+          files: |
+            dist/*
