@@ -1,41 +1,80 @@
-# Premium backend (Supabase + Razorpay)
+# Chess-Book
 
-Files:
+Chess-Book is a free Android app for playing chess against the computer, analysing your games and importing PGN files. It runs a Stockfish chess engine directly on your phone, so analysis works offline.
 
-| File | What it is | Where it goes |
-|---|---|---|
-| `supabase/schema.sql` | Tables, security rules, payment fulfilment | Supabase > SQL Editor |
-| `supabase/functions/bright-api/index.ts` | Create order, verify payment, status (what the app calls) | Edge function named `bright-api` |
-| `supabase/functions/razorpay-webhook/index.ts` | Razorpay safety net | Edge function named `razorpay-webhook`, **Verify JWT off** |
+## What the app does
 
-## Setup, in order
+- Play chess against the built-in engine
+- Analyse positions and review full games with move-by-move evaluation
+- Import games from PGN
+- Chess tools and board themes
+- Works on Android 8.0 and above
 
-1. **SQL.** Supabase > SQL Editor > New query > paste all of `schema.sql` > Run. You should see your 5 plans listed.
-2. **Anonymous sign-in.** Supabase > Authentication > Sign In / Providers > turn on **Allow anonymous sign-ins**.
-3. **Secrets.** Supabase > Edge Functions > Secrets. You need:
-   `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
-   (`RAZORPAY_WEBHOOK_SECRET` is any long random text you invent in step 5.)
-4. **Functions.** Edge Functions > open `bright-api` > replace ALL the code with the file above > Deploy.
-   Then create a new function named `razorpay-webhook`, paste its file, and in its settings turn **Verify JWT off**.
-   For `bright-api` also turn **Verify JWT off**: the code checks the user itself and this avoids login-token format problems.
-5. **Razorpay webhook.** Razorpay Dashboard > Account & Settings > Webhooks > Add. URL:
-   `https://<your-project>.supabase.co/functions/v1/razorpay-webhook`. Secret: the same text as `RAZORPAY_WEBHOOK_SECRET`.
-   Tick **payment.captured** and **order.paid**.
-6. **GitHub secrets** (repo > Settings > Secrets and variables > Actions): `SUPABASE_URL`,
-   `SUPABASE_PUBLISHABLE_KEY`, `RAZORPAY_KEY_ID`. All three are public values. Never add the Key Secret to GitHub.
-7. Run **Android Debug Build** again. The Premium button now says "Buy ...".
+## Free and Premium
 
-## Tests
+The app is free to use with **Stockfish Lite**, which never expires. **Premium** unlocks **Stockfish Full**, a stronger and deeper analysis mode. Premium is a digital feature unlocked inside the app after a successful payment.
 
-```
-node --experimental-strip-types --no-warnings --test backend/tests/functions.test.mjs
-```
+## Pricing (in Indian Rupees)
 
-Runs the real function code against a fake database and fake Razorpay (forged signatures, other users' orders,
-wrong amounts, duplicate webhooks). `schema.sql` was also run twice against a real PostgreSQL 16.
-Nothing here has been run against your live Supabase or the real Razorpay, so do a test-mode payment before going live.
+| Plan | Price | Access |
+| --- | --- | --- |
+| 1 Hour | ₹2 | 60 minutes of Premium |
+| 6 Hours | ₹5 | 6 hours of Premium |
+| 12 Hours | ₹8 | 12 hours of Premium |
+| 24 Hours | ₹10 | 24 hours of Premium |
+| Lifetime | ₹50 | Permanent Premium on your account |
 
-## Test payment
+Payments are handled securely by **Razorpay**. We never see or store your card, UPI or bank details. Premium turns on only after our server verifies the payment with Razorpay.
 
-In Razorpay **Test mode** use the test card details from Razorpay's docs (any future expiry, any CVV). No real money moves.
-After paying, the Premium screen should say "Premium active until ...".
+## How to buy Premium
+
+1. Open the app and go to the Premium screen.
+2. Choose a plan and tap Buy.
+3. Complete the payment on the Razorpay screen.
+4. Premium activates automatically once the payment is verified.
+
+If money was deducted but Premium did not turn on, close and reopen the app. It re-checks your payment with the server and activates Premium. If it still does not work within a few minutes, contact us using the details below.
+
+## Cancellation and Refund Policy
+
+- Premium plans are one-time purchases and do not auto-renew. There is nothing to cancel.
+- Because Premium is a digital service that is delivered immediately after payment, completed purchases are generally non-refundable.
+- If you were charged but Premium was not activated, or you were charged twice for the same plan, contact us with your payment ID and we will fix the activation or refund the extra amount.
+- Approved refunds are returned to the original payment method, usually within 5 to 7 working days.
+
+## Delivery Policy
+
+This is a digital service with no physical shipping. Premium is activated in the app within seconds of a verified payment.
+
+## Privacy
+
+The app signs you in anonymously. We store only your anonymous account ID, your plan and its expiry time. We do not collect your name, phone number or payment details. Your saved games stay on your device.
+
+## Contact and Support
+
+- Telegram: [@YogeshBhai729](https://t.me/YogeshBhai729)
+- Email: yogeshbangari123@gmail.com
+- GitHub: [dragon-729](https://github.com/dragon-729)
+
+We usually reply within 24 to 48 hours.
+
+## Download
+
+Get the latest signed APK from the **Releases** section of this repository.
+
+## For developers: backend setup
+
+The Premium backend uses Supabase and Razorpay.
+
+1. Run `supabase/schema.sql` in the Supabase SQL Editor.
+2. Turn on Allow anonymous sign-ins in Supabase Authentication.
+3. Add the secrets `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` in Supabase Edge Functions.
+4. Deploy the functions `bright-api` and `razorpay-webhook`, both with Verify JWT turned off.
+5. In Razorpay, add a webhook to `https://<your-project>.supabase.co/functions/v1/razorpay-webhook` with the events `payment.captured` and `order.paid`.
+6. Add the GitHub secrets `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `RAZORPAY_KEY_ID`, then run the build workflow.
+
+Never put the Razorpay Key Secret in GitHub or in the app.
+
+## License
+
+See the LICENSE file.
