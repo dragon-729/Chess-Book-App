@@ -7,12 +7,20 @@ Chess-Book is a free Android app for playing chess against the computer, analysi
 - Play chess against the built-in engine
 - Analyse positions and review full games with move-by-move evaluation
 - Import games from PGN
-- Chess tools and board themes
+- Chess tools and six board themes
+- Classic navy-and-gold look with colourful cards, in light and dark mode
 - Works on Android 8.0 and above
 
 ## Free and Premium
 
 The app is free to use with **Stockfish Lite**, which never expires. **Premium** unlocks **Stockfish Full**, a stronger and deeper analysis mode. Premium is a digital feature unlocked inside the app after a successful payment.
+
+### Premium features
+
+- **Stockfish Full**: deeper, longer analysis with 3 lines at once.
+- **Custom Elo range**: play against a bot of any strength from 1320 to 3190 Elo (Play tab).
+- **Human touch**: the bot varies between near-equal moves, never throws away a forced mate, and thinks for a natural, changing time (Play tab).
+- **Move review with suggestion arrows**: after "Review this game" every move is rated on the board with a badge (Best, Mistake, Blunder ...). A green arrow shows the better move and a blue arrow shows another good option. "Prev / Next mistake" buttons jump between key moments (Analysis tab). Free users still get the game report, accuracy and eval graph.
 
 ## Pricing (in Indian Rupees)
 
